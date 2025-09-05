@@ -321,5 +321,25 @@ router.get('/search/:query', async (req, res) => {
     }
 });
 
+// Update all tenant statuses based on dates
+router.patch('/update-statuses', async (req, res) => {
+    try {
+        const result = await Tenant.updateAllStatuses();
+        
+        res.json({
+            success: true,
+            message: `Updated ${result.updated} tenant statuses`,
+            data: result
+        });
+    } catch (error) {
+        console.error('Error updating tenant statuses:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating tenant statuses',
+            error: error.message
+        });
+    }
+});
+
 module.exports = router;
 

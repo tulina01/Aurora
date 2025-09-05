@@ -251,7 +251,17 @@ function setupEventListeners() {
     // Add buttons
     const addTenantBtn = document.getElementById('add-tenant-btn');
     if (addTenantBtn) {
-        addTenantBtn.addEventListener('click', () => showModal('add-tenant-modal'));
+        addTenantBtn.addEventListener('click', () => {
+            // Reset modal to add mode
+            const modal = document.getElementById('add-tenant-modal');
+            const modalTitle = modal.querySelector('.modal-header h2');
+            const submitButton = modal.querySelector('button[type="submit"]');
+            
+            modalTitle.textContent = 'Add New Tenant';
+            submitButton.textContent = 'Add Tenant';
+            
+            showModal('add-tenant-modal');
+        });
     }
     
     const addMaintenanceBtn = document.getElementById('add-maintenance-btn');
@@ -267,7 +277,17 @@ function setupEventListeners() {
     // Dashboard action buttons
     const dashboardAddTenantBtn = document.getElementById('dashboard-add-tenant-btn');
     if (dashboardAddTenantBtn) {
-        dashboardAddTenantBtn.addEventListener('click', () => showModal('add-tenant-modal'));
+        dashboardAddTenantBtn.addEventListener('click', () => {
+            // Reset modal to add mode
+            const modal = document.getElementById('add-tenant-modal');
+            const modalTitle = modal.querySelector('.modal-header h2');
+            const submitButton = modal.querySelector('button[type="submit"]');
+            
+            modalTitle.textContent = 'Add New Tenant';
+            submitButton.textContent = 'Add Tenant';
+            
+            showModal('add-tenant-modal');
+        });
     }
     
     const dashboardMaintenanceBtn = document.getElementById('dashboard-maintenance-btn');
@@ -295,14 +315,8 @@ function setupEventListeners() {
         });
     });
     
-    // Close modal when clicking outside
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal(this.id);
-            }
-        });
-    });
+    // Modal closing is now only handled by close buttons and cancel buttons
+    // No click-outside-to-close functionality to prevent drag issues
     
     // Form input focus effects
     document.querySelectorAll('input, select, textarea').forEach(input => {
@@ -337,6 +351,12 @@ function setupEventListeners() {
 function setupDynamicEventListeners() {
     // Use event delegation for dynamically created buttons
     document.addEventListener('click', function(e) {
+        // Info tenant button
+        if (e.target.closest('.info-tenant-btn')) {
+            const tenantId = e.target.closest('.info-tenant-btn').getAttribute('data-tenant-id');
+            showTenantDetails(tenantId);
+        }
+        
         // Edit tenant button
         if (e.target.closest('.edit-tenant-btn')) {
             const tenantId = e.target.closest('.edit-tenant-btn').getAttribute('data-tenant-id');
@@ -353,6 +373,37 @@ function setupDynamicEventListeners() {
         if (e.target.closest('.complete-maintenance-btn')) {
             const requestId = e.target.closest('.complete-maintenance-btn').getAttribute('data-request-id');
             completeMaintenance(requestId);
+        }
+        
+        // Edit from details modal button
+        if (e.target.closest('#edit-from-details-btn')) {
+            const tenantId = document.getElementById('edit-from-details-btn').getAttribute('data-tenant-id');
+            closeModal('tenant-details-modal');
+            editTenant(tenantId);
+        }
+        
+        // Edit maintenance button
+        if (e.target.closest('.edit-maintenance-btn')) {
+            const requestId = e.target.closest('.edit-maintenance-btn').getAttribute('data-request-id');
+            editMaintenance(requestId);
+        }
+        
+        // Delete maintenance button
+        if (e.target.closest('.delete-maintenance-btn')) {
+            const requestId = e.target.closest('.delete-maintenance-btn').getAttribute('data-request-id');
+            deleteMaintenance(requestId);
+        }
+        
+        // Edit inventory button
+        if (e.target.closest('.edit-inventory-btn')) {
+            const itemId = e.target.closest('.edit-inventory-btn').getAttribute('data-item-id');
+            editInventory(itemId);
+        }
+        
+        // Delete inventory button
+        if (e.target.closest('.delete-inventory-btn')) {
+            const itemId = e.target.closest('.delete-inventory-btn').getAttribute('data-item-id');
+            deleteInventory(itemId);
         }
     });
 }
@@ -381,6 +432,9 @@ async function loadDataFromAPI() {
         
         // Load tenants
         console.log('👥 Loading tenants...');
+        // First update all tenant statuses based on current dates
+        await api.updateTenantStatuses();
+        
         const tenantsResponse = await api.getTenants();
         if (tenantsResponse.success) {
             tenants = tenantsResponse.data.map(tenant => api.transformTenantData(tenant));
@@ -415,6 +469,10 @@ async function loadDataFromAPI() {
 // Load tenants from API
 async function loadTenantsFromAPI() {
     try {
+        // First update all tenant statuses based on current dates
+        await api.updateTenantStatuses();
+        
+        // Then load the updated tenants
         const response = await api.getTenants();
         if (response.success) {
             tenants = response.data.map(tenant => api.transformTenantData(tenant));
@@ -741,27 +799,47 @@ async function handleAddMaintenance(e) {
         };
         
         console.log('📋 Maintenance data:', maintenanceData);
-        console.log('📡 Making API call to create maintenance request...');
         
-        try {
-            const response = await api.createMaintenance(maintenanceData);
-            console.log('📡 Maintenance API response received:', response);
-            
+        // Check if this is an edit operation
+        const editId = document.getElementById('maintenance-form').getAttribute('data-edit-id');
+        let response;
+        
+        if (editId) {
+            // Update existing maintenance request
+            console.log(`🔄 Updating maintenance request with ID: ${editId}`);
+            response = await api.updateMaintenance(editId, maintenanceData);
             if (response.success) {
-                showMessage('Maintenance request submitted successfully!', 'success');
-                closeModal('maintenance-modal');
-                await loadMaintenanceFromAPI();
-                updateDashboard();
-                
-                if (document.getElementById('maintenance').classList.contains('active')) {
-                    renderMaintenanceLists();
-                }
-            } else {
-                showMessage('Failed to submit maintenance request: ' + response.message, 'error');
+                showMessage('Maintenance request updated successfully!', 'success');
             }
-        } catch (apiError) {
-            console.error('❌ Maintenance API call failed:', apiError);
-            throw apiError;
+        } else {
+            // Create new maintenance request
+            console.log('🆕 Creating new maintenance request...');
+            console.log('📡 Making API call to create maintenance request...');
+            
+            try {
+                response = await api.createMaintenance(maintenanceData);
+                console.log('📡 Maintenance API response received:', response);
+                if (response.success) {
+                    showMessage('Maintenance request submitted successfully!', 'success');
+                }
+            } catch (apiError) {
+                console.error('❌ Maintenance API call failed:', apiError);
+                throw apiError;
+            }
+        }
+        
+        if (response.success) {
+            closeModal('maintenance-modal');
+            // Clear the edit ID
+            document.getElementById('maintenance-form').removeAttribute('data-edit-id');
+            await loadMaintenanceFromAPI();
+            updateDashboard();
+            
+            if (document.getElementById('maintenance').classList.contains('active')) {
+                renderMaintenanceLists();
+            }
+        } else {
+            showMessage('Failed to save maintenance request: ' + response.message, 'error');
         }
     } catch (error) {
         console.error('❌ Error adding maintenance request:', error);
@@ -799,26 +877,46 @@ async function handleAddInventory(e) {
         };
         
         console.log('📋 Inventory data:', inventoryData);
-        console.log('📡 Making API call to create inventory item...');
         
-        try {
-            const response = await api.createInventory(inventoryData);
-            console.log('📡 Inventory API response received:', response);
-            
+        // Check if this is an edit operation
+        const editId = document.getElementById('inventory-form').getAttribute('data-edit-id');
+        let response;
+        
+        if (editId) {
+            // Update existing inventory item
+            console.log(`🔄 Updating inventory item with ID: ${editId}`);
+            response = await api.updateInventory(editId, inventoryData);
             if (response.success) {
-                showMessage('Inventory item added successfully!', 'success');
-                closeModal('inventory-modal');
-                await loadInventoryFromAPI();
-                
-                if (document.getElementById('inventory').classList.contains('active')) {
-                    renderInventoryGrids();
-                }
-            } else {
-                showMessage('Failed to add inventory item: ' + response.message, 'error');
+                showMessage('Inventory item updated successfully!', 'success');
             }
-        } catch (apiError) {
-            console.error('❌ Inventory API call failed:', apiError);
-            throw apiError;
+        } else {
+            // Create new inventory item
+            console.log('🆕 Creating new inventory item...');
+            console.log('📡 Making API call to create inventory item...');
+            
+            try {
+                response = await api.createInventory(inventoryData);
+                console.log('📡 Inventory API response received:', response);
+                if (response.success) {
+                    showMessage('Inventory item added successfully!', 'success');
+                }
+            } catch (apiError) {
+                console.error('❌ Inventory API call failed:', apiError);
+                throw apiError;
+            }
+        }
+        
+        if (response.success) {
+            closeModal('inventory-modal');
+            // Clear the edit ID
+            document.getElementById('inventory-form').removeAttribute('data-edit-id');
+            await loadInventoryFromAPI();
+            
+            if (document.getElementById('inventory').classList.contains('active')) {
+                renderInventoryGrids();
+            }
+        } else {
+            showMessage('Failed to save inventory item: ' + response.message, 'error');
         }
     } catch (error) {
         console.error('❌ Error adding inventory item:', error);
@@ -901,10 +999,13 @@ function renderTenantsTable(tenantsToRender = tenants) {
                 </span>
             </td>
             <td>
-                <button class="btn-secondary edit-tenant-btn" data-tenant-id="${tenant.id}">
+                <button class="btn-secondary info-tenant-btn" data-tenant-id="${tenant.id}" title="View Details">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+                <button class="btn-secondary edit-tenant-btn" data-tenant-id="${tenant.id}" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn-secondary delete-tenant-btn" data-tenant-id="${tenant.id}">
+                <button class="btn-secondary delete-tenant-btn" data-tenant-id="${tenant.id}" title="Delete">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -938,9 +1039,17 @@ function renderMaintenanceLists() {
                 <p>${request.description}</p>
                 <div class="maintenance-footer">
                     <small>Reported: ${formatDate(request.reportedDate)}</small>
-                    <button class="btn-secondary complete-maintenance-btn" data-request-id="${request.id}">
-                        Mark Complete
-                    </button>
+                    <div class="maintenance-actions">
+                        <button class="btn-secondary edit-maintenance-btn" data-request-id="${request.id}" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-secondary delete-maintenance-btn" data-request-id="${request.id}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button class="btn-secondary complete-maintenance-btn" data-request-id="${request.id}">
+                            Mark Complete
+                        </button>
+                    </div>
                 </div>
             </div>
         `).join('');
@@ -963,7 +1072,17 @@ function renderMaintenanceLists() {
                     <span class="status-badge status-completed">Completed</span>
                 </div>
                 <p>${request.description}</p>
-                <small>Completed: ${formatDate(request.completedAt)}</small>
+                <div class="maintenance-footer">
+                    <small>Completed: ${formatDate(request.completedAt)}</small>
+                    <div class="maintenance-actions">
+                        <button class="btn-secondary edit-maintenance-btn" data-request-id="${request.id}" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-secondary delete-maintenance-btn" data-request-id="${request.id}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         `).join('');
     }
@@ -990,7 +1109,17 @@ function renderInventoryGrids() {
     } else {
         furnitureContainer.innerHTML = furniture.map(item => `
             <div class="inventory-item">
-                <h4>${item.type}</h4>
+                <div class="inventory-header">
+                    <h4>${item.type}</h4>
+                    <div class="inventory-actions">
+                        <button class="btn-secondary edit-inventory-btn" data-item-id="${item.id}" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-secondary delete-inventory-btn" data-item-id="${item.id}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
                 <p>Apartment: ${item.apartmentNumber}</p>
                 <p>Count: ${item.count}</p>
                 <p>${item.notes}</p>
@@ -1010,7 +1139,17 @@ function renderInventoryGrids() {
     } else {
         appliancesContainer.innerHTML = appliances.map(item => `
             <div class="inventory-item">
-                <h4>${item.type}</h4>
+                <div class="inventory-header">
+                    <h4>${item.type}</h4>
+                    <div class="inventory-actions">
+                        <button class="btn-secondary edit-inventory-btn" data-item-id="${item.id}" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-secondary delete-inventory-btn" data-item-id="${item.id}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
                 <p>Apartment: ${item.apartmentNumber}</p>
                 <p>Count: ${item.count}</p>
                 <p>${item.notes}</p>
@@ -1030,7 +1169,17 @@ function renderInventoryGrids() {
     } else {
         utensilsContainer.innerHTML = utensils.map(item => `
             <div class="inventory-item">
-                <h4>${item.type}</h4>
+                <div class="inventory-header">
+                    <h4>${item.type}</h4>
+                    <div class="inventory-actions">
+                        <button class="btn-secondary edit-inventory-btn" data-item-id="${item.id}" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-secondary delete-inventory-btn" data-item-id="${item.id}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
                 <p>Apartment: ${item.apartmentNumber}</p>
                 <p>Count: ${item.count}</p>
                 <p>${item.notes}</p>
@@ -1063,6 +1212,14 @@ async function editTenant(tenantId) {
             // Store the tenant ID for update
             document.getElementById('add-tenant-form').setAttribute('data-edit-id', tenantId);
             
+            // Update modal title and button text for edit mode
+            const modal = document.getElementById('add-tenant-modal');
+            const modalTitle = modal.querySelector('.modal-header h2');
+            const submitButton = modal.querySelector('button[type="submit"]');
+            
+            modalTitle.textContent = 'Edit Tenant';
+            submitButton.textContent = 'Update Tenant';
+            
             showModal('add-tenant-modal');
         } else {
             showMessage('Failed to load tenant data: ' + response.message, 'error');
@@ -1093,13 +1250,52 @@ async function deleteTenant(tenantId) {
     }
 }
 
+async function showTenantDetails(tenantId) {
+    try {
+        const response = await api.getTenant(tenantId);
+        if (response.success) {
+            const tenant = response.data;
+            
+            // Populate the details modal with tenant data
+            document.getElementById('detail-name').textContent = tenant.name || 'Not provided';
+            document.getElementById('detail-phone').textContent = tenant.phone || 'Not provided';
+            document.getElementById('detail-email').textContent = tenant.email || 'Not provided';
+            document.getElementById('detail-apartment').textContent = tenant.apartmentNumber || 'Not provided';
+            document.getElementById('detail-checkin').textContent = tenant.checkinDate ? formatDate(tenant.checkinDate) : 'Not provided';
+            document.getElementById('detail-checkout').textContent = tenant.checkoutDate ? formatDate(tenant.checkoutDate) : 'Not provided';
+            document.getElementById('detail-rental-basis').textContent = tenant.rentalBasis ? tenant.rentalBasis.charAt(0).toUpperCase() + tenant.rentalBasis.slice(1) : 'Not provided';
+            document.getElementById('detail-rent-amount').textContent = tenant.rentAmount ? `$${tenant.rentAmount.toFixed(2)}` : 'Not provided';
+            document.getElementById('detail-deposit').textContent = tenant.deposit ? `$${tenant.deposit.toFixed(2)}` : 'Not provided';
+            document.getElementById('detail-booking-source').textContent = tenant.bookingSource ? tenant.bookingSource.charAt(0).toUpperCase() + tenant.bookingSource.slice(1) : 'Not provided';
+            document.getElementById('detail-status').innerHTML = `<span class="status-badge status-${tenant.status}">${tenant.status}</span>`;
+            document.getElementById('detail-special-requests').textContent = tenant.specialRequests || 'Not provided';
+            document.getElementById('detail-remarks').textContent = tenant.remarks || 'Not provided';
+            
+            // Store the tenant ID for the edit button
+            document.getElementById('edit-from-details-btn').setAttribute('data-tenant-id', tenantId);
+            
+            // Show the modal
+            showModal('tenant-details-modal');
+        } else {
+            showMessage('Failed to load tenant details: ' + response.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading tenant details:', error);
+        showMessage('Error loading tenant details: ' + error.message, 'error');
+    }
+}
+
 async function completeMaintenance(requestId) {
     try {
         const response = await api.completeMaintenance(requestId, new Date().toISOString());
         
         if (response.success) {
-            updateDashboard();
+            // Reload maintenance data from API to get updated status
+            await loadMaintenanceFromAPI();
+            // Re-render the maintenance lists with updated data
             renderMaintenanceLists();
+            // Update dashboard
+            updateDashboard();
             showMessage('Maintenance request marked as completed', 'success');
         } else {
             showMessage('Failed to complete maintenance request: ' + response.message, 'error');
@@ -1107,6 +1303,114 @@ async function completeMaintenance(requestId) {
     } catch (error) {
         console.error('Error completing maintenance request:', error);
         showMessage('Error completing maintenance request: ' + error.message, 'error');
+    }
+}
+
+async function editMaintenance(requestId) {
+    try {
+        const response = await api.getMaintenance(requestId);
+        if (response.success) {
+            const maintenance = response.data;
+            
+            // Populate form with maintenance data
+            document.getElementById('maintenance-apartment').value = maintenance.apartmentNumber;
+            document.getElementById('maintenance-type').value = maintenance.type;
+            document.getElementById('maintenance-description').value = maintenance.description;
+            document.getElementById('maintenance-priority').value = maintenance.priority;
+            document.getElementById('maintenance-date').value = maintenance.reportedDate ? maintenance.reportedDate.split('T')[0] : '';
+            
+            // Store the maintenance ID for update
+            document.getElementById('maintenance-form').setAttribute('data-edit-id', requestId);
+            
+            // Update modal title and button text for edit mode
+            const modal = document.getElementById('maintenance-modal');
+            const modalTitle = modal.querySelector('.modal-header h2');
+            const submitButton = modal.querySelector('button[type="submit"]');
+            
+            modalTitle.textContent = 'Edit Maintenance Request';
+            submitButton.textContent = 'Update Request';
+            
+            showModal('maintenance-modal');
+        } else {
+            showMessage('Failed to load maintenance data: ' + response.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading maintenance data:', error);
+        showMessage('Error loading maintenance data: ' + error.message, 'error');
+    }
+}
+
+async function deleteMaintenance(requestId) {
+    if (confirm('Are you sure you want to delete this maintenance request?')) {
+        try {
+            const response = await api.deleteMaintenance(requestId);
+            
+            if (response.success) {
+                await loadMaintenanceFromAPI();
+                renderMaintenanceLists();
+                updateDashboard();
+                showMessage('Maintenance request deleted successfully', 'success');
+            } else {
+                showMessage('Failed to delete maintenance request: ' + response.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting maintenance request:', error);
+            showMessage('Error deleting maintenance request: ' + error.message, 'error');
+        }
+    }
+}
+
+async function editInventory(itemId) {
+    try {
+        const response = await api.getInventory(itemId);
+        if (response.success) {
+            const item = response.data;
+            
+            // Populate form with inventory data
+            document.getElementById('inventory-apartment').value = item.apartmentNumber;
+            document.getElementById('inventory-category').value = item.category;
+            document.getElementById('item-type').value = item.type;
+            document.getElementById('item-count').value = item.count;
+            document.getElementById('item-notes').value = item.notes || '';
+            
+            // Store the item ID for update
+            document.getElementById('inventory-form').setAttribute('data-edit-id', itemId);
+            
+            // Update modal title and button text for edit mode
+            const modal = document.getElementById('inventory-modal');
+            const modalTitle = modal.querySelector('.modal-header h2');
+            const submitButton = modal.querySelector('button[type="submit"]');
+            
+            modalTitle.textContent = 'Edit Inventory Item';
+            submitButton.textContent = 'Update Item';
+            
+            showModal('inventory-modal');
+        } else {
+            showMessage('Failed to load inventory data: ' + response.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading inventory data:', error);
+        showMessage('Error loading inventory data: ' + error.message, 'error');
+    }
+}
+
+async function deleteInventory(itemId) {
+    if (confirm('Are you sure you want to delete this inventory item?')) {
+        try {
+            const response = await api.deleteInventory(itemId);
+            
+            if (response.success) {
+                await loadInventoryFromAPI();
+                renderInventoryGrids();
+                updateDashboard();
+                showMessage('Inventory item deleted successfully', 'success');
+            } else {
+                showMessage('Failed to delete inventory item: ' + response.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting inventory item:', error);
+            showMessage('Error deleting inventory item: ' + error.message, 'error');
+        }
     }
 }
 
@@ -1148,6 +1452,33 @@ function closeModal(modalId) {
         if (form) {
             form.reset();
             form.removeAttribute('data-edit-id');
+            
+            // Reset modal title and button text for add tenant modal
+            if (modalId === 'add-tenant-modal') {
+                const modalTitle = modal.querySelector('.modal-header h2');
+                const submitButton = modal.querySelector('button[type="submit"]');
+                
+                modalTitle.textContent = 'Add New Tenant';
+                submitButton.textContent = 'Add Tenant';
+            }
+            
+            // Reset modal title and button text for maintenance modal
+            if (modalId === 'maintenance-modal') {
+                const modalTitle = modal.querySelector('.modal-header h2');
+                const submitButton = modal.querySelector('button[type="submit"]');
+                
+                modalTitle.textContent = 'New Maintenance Request';
+                submitButton.textContent = 'Submit Request';
+            }
+            
+            // Reset modal title and button text for inventory modal
+            if (modalId === 'inventory-modal') {
+                const modalTitle = modal.querySelector('.modal-header h2');
+                const submitButton = modal.querySelector('button[type="submit"]');
+                
+                modalTitle.textContent = 'Add Inventory Item';
+                submitButton.textContent = 'Add Item';
+            }
         }
     }
 }

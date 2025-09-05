@@ -67,7 +67,7 @@ const tenantSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'inactive'],
+        enum: ['active', 'inactive', 'pending'],
         default: 'active'
     },
     idVerification: {
@@ -118,9 +118,13 @@ tenantSchema.index({ status: 1 });
 tenantSchema.index({ checkinDate: -1 });
 tenantSchema.index({ name: 'text', email: 'text' });
 
-// Pre-save middleware to update total rent
+// Pre-save middleware to update total rent and status
 tenantSchema.pre('save', function(next) {
     this.totalRent = this.calculatedTotalRent;
+    
+    // Auto-calculate status based on dates
+    this.status = this.calculateStatus();
+    
     next();
 });
 
@@ -151,6 +155,42 @@ tenantSchema.methods.checkout = function(checkoutDate = new Date()) {
     this.checkoutDate = checkoutDate;
     this.status = 'inactive';
     return this.save();
+};
+
+// Instance method to calculate status based on dates
+tenantSchema.methods.calculateStatus = function() {
+    const now = new Date();
+    const checkinDate = new Date(this.checkinDate);
+    const checkoutDate = this.checkoutDate ? new Date(this.checkoutDate) : null;
+    
+    // If check-in date is in the future, status is pending
+    if (checkinDate > now) {
+        return 'pending';
+    }
+    
+    // If there's a check-out date and it's in the past, status is inactive
+    if (checkoutDate && checkoutDate <= now) {
+        return 'inactive';
+    }
+    
+    // Otherwise, status is active (checked in and not checked out yet)
+    return 'active';
+};
+
+// Static method to update all tenant statuses
+tenantSchema.statics.updateAllStatuses = async function() {
+    const tenants = await this.find({});
+    const updatePromises = tenants.map(async (tenant) => {
+        const calculatedStatus = tenant.calculateStatus();
+        if (tenant.status !== calculatedStatus) {
+            tenant.status = calculatedStatus;
+            return tenant.save();
+        }
+        return tenant;
+    });
+    
+    await Promise.all(updatePromises);
+    return { updated: updatePromises.length };
 };
 
 module.exports = mongoose.model('Tenant', tenantSchema);

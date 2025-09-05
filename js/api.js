@@ -88,6 +88,12 @@ class APIService {
         return this.request(`${this.endpoints.tenants}/search/${encodeURIComponent(query)}`);
     }
 
+    async updateTenantStatuses() {
+        return this.request(`${this.endpoints.tenants}/update-statuses`, {
+            method: 'PATCH'
+        });
+    }
+
     async getTenantsByApartment(apartmentNumber) {
         return this.request(`${this.endpoints.tenants}/apartment/${apartmentNumber}`);
     }
@@ -99,8 +105,11 @@ class APIService {
         return this.request(endpoint);
     }
 
-    async getMaintenanceById(id) {
-        return this.request(`${this.endpoints.maintenance}/${id}`);
+    async getMaintenance(id = null) {
+        if (id) {
+            return this.request(`${this.endpoints.maintenance}/${id}`);
+        }
+        return this.request(this.endpoints.maintenance);
     }
 
     async createMaintenance(maintenanceData) {
@@ -168,6 +177,13 @@ class APIService {
 
     async getInventoryById(id) {
         return this.request(`${this.endpoints.inventory}/${id}`);
+    }
+
+    async getInventory(id) {
+        if (id) {
+            return this.request(`${this.endpoints.inventory}/${id}`);
+        }
+        return this.request(this.endpoints.inventory);
     }
 
     async createInventory(inventoryData) {

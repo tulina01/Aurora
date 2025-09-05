@@ -148,6 +148,7 @@
                 <select id="status-filter" class="filter-select">
                     <option value="">All Status</option>
                     <option value="active">Active</option>
+                    <option value="pending">Pending</option>
                     <option value="inactive">Inactive</option>
                 </select>
             </div>
@@ -329,6 +330,97 @@
                     <button type="submit" class="btn-primary">Add Tenant</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Tenant Details Modal -->
+    <div id="tenant-details-modal" class="modal">
+        <div class="modal-content tenant-details-modal">
+            <div class="modal-header">
+                <h2>Tenant Details</h2>
+                <button class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="tenant-details-content">
+                <div class="tenant-details-grid">
+                    <div class="detail-section">
+                        <h3><i class="fas fa-user"></i> Personal Information</h3>
+                        <div class="detail-item">
+                            <label>Full Name:</label>
+                            <span id="detail-name">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Phone Number:</label>
+                            <span id="detail-phone">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Email:</label>
+                            <span id="detail-email">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h3><i class="fas fa-home"></i> Accommodation Details</h3>
+                        <div class="detail-item">
+                            <label>Apartment Number:</label>
+                            <span id="detail-apartment">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Check-in Date:</label>
+                            <span id="detail-checkin">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Check-out Date:</label>
+                            <span id="detail-checkout">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Rental Basis:</label>
+                            <span id="detail-rental-basis">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h3><i class="fas fa-dollar-sign"></i> Financial Information</h3>
+                        <div class="detail-item">
+                            <label>Rent Amount:</label>
+                            <span id="detail-rent-amount">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Deposit Amount:</label>
+                            <span id="detail-deposit">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Booking Source:</label>
+                            <span id="detail-booking-source">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h3><i class="fas fa-info-circle"></i> Additional Information</h3>
+                        <div class="detail-item">
+                            <label>Status:</label>
+                            <span id="detail-status">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Special Requests:</label>
+                            <span id="detail-special-requests">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Remarks:</label>
+                            <span id="detail-remarks">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" data-modal="tenant-details-modal">Close</button>
+                    <button type="button" class="btn-primary" id="edit-from-details-btn">
+                        <i class="fas fa-edit"></i>
+                        Edit Tenant
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
