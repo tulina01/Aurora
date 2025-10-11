@@ -7,6 +7,7 @@ class APIService {
             tenants: '/tenants',
             maintenance: '/maintenance',
             inventory: '/inventory',
+            apartments: '/apartments',
             health: '/health'
         };
     }
@@ -227,6 +228,43 @@ class APIService {
         });
     }
 
+    // Apartment methods
+    async getApartments() {
+        return this.request(this.endpoints.apartments);
+    }
+
+    async getApartment(id) {
+        return this.request(`${this.endpoints.apartments}/${id}`);
+    }
+
+    async createApartment(apartmentData) {
+        return this.request(this.endpoints.apartments, {
+            method: 'POST',
+            body: JSON.stringify(apartmentData)
+        });
+    }
+
+    async updateApartment(id, apartmentData) {
+        return this.request(`${this.endpoints.apartments}/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(apartmentData)
+        });
+    }
+
+    async deleteApartment(id) {
+        return this.request(`${this.endpoints.apartments}/${id}`, {
+            method: 'DELETE'
+        });
+    }
+
+    async getApartmentInventory(apartmentId) {
+        return this.request(`${this.endpoints.apartments}/${apartmentId}/inventory`);
+    }
+
+    async getApartmentMaintenance(apartmentId) {
+        return this.request(`${this.endpoints.apartments}/${apartmentId}/maintenance`);
+    }
+
     async changeItemStatus(id, status) {
         return this.request(`${this.endpoints.inventory}/${id}/status`, {
             method: 'PATCH',
@@ -297,6 +335,7 @@ class APIService {
             checkinDate: tenant.checkinDate,
             checkoutDate: tenant.checkoutDate,
             rentalBasis: tenant.rentalBasis,
+            currency: tenant.currency || 'USD', // Default to USD if not set
             rentAmount: tenant.rentAmount,
             deposit: tenant.deposit,
             bookingSource: tenant.bookingSource,

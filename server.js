@@ -11,6 +11,7 @@ require('dotenv').config({ path: './config.env' });
 const tenantRoutes = require('./routes/tenants');
 const maintenanceRoutes = require('./routes/maintenance');
 const inventoryRoutes = require('./routes/inventory');
+const apartmentRoutes = require('./routes/apartments');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +47,7 @@ app.use(express.static(path.join(__dirname)));
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/apartments', apartmentRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

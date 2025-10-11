@@ -40,6 +40,12 @@ const tenantSchema = new mongoose.Schema({
         enum: ['monthly', 'daily'],
         default: 'monthly'
     },
+    currency: {
+        type: String,
+        required: [true, 'Currency is required'],
+        enum: ['USD', 'GBP', 'EUR', 'LKR'],
+        default: 'USD'
+    },
     rentAmount: {
         type: Number,
         required: [true, 'Rent amount is required'],
