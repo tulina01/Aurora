@@ -962,6 +962,11 @@ async function handleAddTenant(e) {
             if (document.getElementById('tenants').classList.contains('active')) {
                 renderTenantsTable();
             }
+            
+            // Also re-render apartments to update status if apartments page is active
+            if (document.getElementById('apartments').classList.contains('active')) {
+                renderApartmentsGrid();
+            }
         } else {
             console.error('❌ Failed to save tenant:', response.message);
             showMessage('Failed to save tenant: ' + response.message, 'error');
@@ -1146,6 +1151,11 @@ async function handleTenantSearch(e) {
         // Load all tenants when search is cleared
         await loadTenantsFromAPI();
         renderTenantsTable();
+        
+        // Also re-render apartments to update status if apartments page is active
+        if (document.getElementById('apartments').classList.contains('active')) {
+            renderApartmentsGrid();
+        }
     }
 }
 
@@ -1277,7 +1287,7 @@ function renderMaintenanceLists() {
                 </div>
                 <p>${request.description}</p>
                 <div class="maintenance-footer">
-                    <small>Completed: ${formatDate(request.completedAt)}</small>
+                    <small>Completed: ${formatDate(request.completedDate)}</small>
                     <div class="maintenance-actions">
                         <button class="btn-secondary edit-maintenance-btn" data-request-id="${request.id}" title="Edit">
                             <i class="fas fa-edit"></i>
@@ -1306,9 +1316,20 @@ function renderApartmentsGrid() {
         return;
     }
     
-    container.innerHTML = apartments.map(apartment => {
+    // Sort apartments by apartment number in ascending order
+    const sortedApartments = [...apartments].sort((a, b) => {
+        // Convert apartment numbers to integers for proper numerical sorting
+        const numA = parseInt(a.number) || 0;
+        const numB = parseInt(b.number) || 0;
+        return numA - numB;
+    });
+    
+    container.innerHTML = sortedApartments.map(apartment => {
         // Get tenant for this apartment
         const tenant = tenants.find(t => t.apartmentNumber === apartment.number);
+        
+        // Determine apartment status based on active tenant presence
+        const apartmentStatus = isTenantActive(tenant) ? 'occupied' : 'available';
         
         // Get inventory items for this apartment
         const apartmentInventory = inventory.filter(item => item.apartmentNumber === apartment.number);
@@ -1332,7 +1353,7 @@ function renderApartmentsGrid() {
                 
                 <div class="apartment-header">
                     <div class="apartment-number">Apartment ${apartment.number}</div>
-                    <div class="apartment-status ${apartment.status}">${apartment.status}</div>
+                    <div class="apartment-status ${apartmentStatus}">${apartmentStatus}</div>
                 </div>
                 
                 <div class="apartment-details">
@@ -1350,7 +1371,7 @@ function renderApartmentsGrid() {
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Current Tenant:</span>
-                        <span class="detail-value">${tenant ? tenant.name : 'None'}</span>
+                        <span class="detail-value">${isTenantActive(tenant) ? tenant.name : 'None'}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Inventory Items:</span>
@@ -1398,9 +1419,11 @@ function renderInventoryGrids() {
                         </button>
                     </div>
                 </div>
-                <p>Apartment: ${item.apartmentNumber}</p>
-                <p>Count: ${item.count}</p>
-                <p>${item.notes}</p>
+                <div class="inventory-details">
+                    <p><strong>Apartment:</strong> ${item.apartmentNumber}</p>
+                    <p><strong>Count:</strong> ${item.count} ${item.count === 1 ? 'item' : 'items'}</p>
+                    ${item.notes ? `<p><strong>Notes:</strong> ${item.notes}</p>` : ''}
+                </div>
             </div>
         `).join('');
     }
@@ -1428,9 +1451,11 @@ function renderInventoryGrids() {
                         </button>
                     </div>
                 </div>
-                <p>Apartment: ${item.apartmentNumber}</p>
-                <p>Count: ${item.count}</p>
-                <p>${item.notes}</p>
+                <div class="inventory-details">
+                    <p><strong>Apartment:</strong> ${item.apartmentNumber}</p>
+                    <p><strong>Count:</strong> ${item.count} ${item.count === 1 ? 'item' : 'items'}</p>
+                    ${item.notes ? `<p><strong>Notes:</strong> ${item.notes}</p>` : ''}
+                </div>
             </div>
         `).join('');
     }
@@ -1458,9 +1483,11 @@ function renderInventoryGrids() {
                         </button>
                     </div>
                 </div>
-                <p>Apartment: ${item.apartmentNumber}</p>
-                <p>Count: ${item.count}</p>
-                <p>${item.notes}</p>
+                <div class="inventory-details">
+                    <p><strong>Apartment:</strong> ${item.apartmentNumber}</p>
+                    <p><strong>Count:</strong> ${item.count} ${item.count === 1 ? 'item' : 'items'}</p>
+                    ${item.notes ? `<p><strong>Notes:</strong> ${item.notes}</p>` : ''}
+                </div>
             </div>
         `).join('');
     }
@@ -1518,6 +1545,12 @@ async function deleteTenant(tenantId) {
                 await loadTenantsFromAPI();
                 updateDashboard();
                 renderTenantsTable();
+                
+                // Also re-render apartments to update status if apartments page is active
+                if (document.getElementById('apartments').classList.contains('active')) {
+                    renderApartmentsGrid();
+                }
+                
                 showMessage('Tenant deleted successfully', 'success');
             } else {
                 showMessage('Failed to delete tenant: ' + response.message, 'error');
@@ -1978,6 +2011,9 @@ async function viewApartmentDetails(apartmentId) {
         const apartmentInventory = inventory.filter(item => item.apartmentNumber === apartment.number);
         const apartmentMaintenance = maintenanceRequests.filter(m => m.apartmentNumber === apartment.number);
         
+        // Determine apartment status based on active tenant presence
+        const apartmentStatus = isTenantActive(tenant) ? 'occupied' : 'available';
+        
         // Populate apartment information
         document.getElementById('detail-apartment-number').textContent = apartment.number;
         document.getElementById('detail-apartment-size').textContent = `${apartment.size} sq ft`;
@@ -1985,15 +2021,15 @@ async function viewApartmentDetails(apartmentId) {
         document.getElementById('detail-apartment-bathrooms').textContent = apartment.bathrooms;
         
         const statusBadge = document.getElementById('detail-apartment-status');
-        statusBadge.textContent = apartment.status;
-        statusBadge.className = `status-badge apartment-status ${apartment.status}`;
+        statusBadge.textContent = apartmentStatus;
+        statusBadge.className = `status-badge apartment-status ${apartmentStatus}`;
         
         // Update modal title
         document.getElementById('apartment-details-title').textContent = `Apartment ${apartment.number} - Details`;
         
         // Populate tenant information
         const tenantInfoDiv = document.getElementById('detail-tenant-info');
-        if (tenant) {
+        if (isTenantActive(tenant)) {
             tenantInfoDiv.innerHTML = `
                 <div class="detail-item">
                     <label>Name:</label>
@@ -2046,7 +2082,7 @@ async function viewApartmentDetails(apartmentId) {
                 <div class="maintenance-item">
                     <div class="maintenance-item-info">
                         <h4>${m.description}</h4>
-                        <p>${m.type || 'General'} • Reported: ${formatDate(m.reportedDate)}</p>
+                        <p>${m.type || 'General'} • Reported: ${formatDate(m.reportedDate)}${m.completedDate ? ` • Completed: ${formatDate(m.completedDate)}` : ''}</p>
                     </div>
                     <span class="maintenance-item-status ${m.status}">${m.status}</span>
                 </div>
@@ -2083,6 +2119,21 @@ function formatDate(dateString) {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString();
+}
+
+// Helper function to check if a tenant is currently active (not checked out)
+function isTenantActive(tenant) {
+    if (!tenant) return false;
+    
+    // If no checkout date, tenant is still active
+    if (!tenant.checkoutDate) return true;
+    
+    // If checkout date exists, check if it's in the future
+    const checkoutDate = new Date(tenant.checkoutDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+    
+    return checkoutDate >= today;
 }
 
 function getCurrencySymbol(currency) {
