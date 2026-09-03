@@ -84,8 +84,8 @@ app.use((req, res) => {
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+    family: 4,
+    serverSelectionTimeoutMS: 20000,
 })
 .then(() => {
     console.log('✅ Connected to MongoDB Atlas successfully');

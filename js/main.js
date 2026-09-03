@@ -773,8 +773,8 @@ async function updateDashboard() {
             document.getElementById('total-tenants').textContent = stats.totalTenants || 0;
             document.getElementById('occupied-units').textContent = stats.activeTenants || 0;
             document.getElementById('pending-maintenance').textContent = maintenanceRequests.filter(m => m.status === 'pending').length;
-            // For API stats, we'll show a generic message since we can't determine currency from backend
-            document.getElementById('monthly-revenue').textContent = `$${(stats.totalRevenue || 0).toFixed(2)}`;
+            // Dashboard revenue display (Rupees)
+            document.getElementById('monthly-revenue').textContent = `Rs. ${(stats.totalRevenue || 0).toFixed(2)}`;
             
             // Update recent tenants
             const recentTenants = stats.recentTenants || [];
@@ -810,16 +810,9 @@ async function updateDashboard() {
         
         const activeTenants = tenants.filter(t => t.status === 'active');
         const monthlyRevenue = activeTenants.reduce((sum, t) => sum + t.rentAmount, 0);
-        
-        // Check if all tenants use the same currency
-        const currencies = [...new Set(activeTenants.map(t => t.currency))];
-        if (currencies.length === 1 && currencies[0]) {
-            // All tenants use the same currency
-            document.getElementById('monthly-revenue').textContent = `${getCurrencySymbol(currencies[0])}${monthlyRevenue.toFixed(2)}`;
-        } else {
-            // Mixed currencies - show count instead
-            document.getElementById('monthly-revenue').textContent = `${activeTenants.length} tenants`;
-        }
+
+        // Dashboard revenue display (Rupees)
+        document.getElementById('monthly-revenue').textContent = `Rs. ${monthlyRevenue.toFixed(2)}`;
     }
 }
 

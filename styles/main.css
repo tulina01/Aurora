@@ -177,6 +177,13 @@ body {
     background: #00B4D8;
 }
 
+.stat-icon-text {
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: 0.2px;
+}
+
 .stat-content h3 {
     font-size: 2rem;
     font-weight: 700;
